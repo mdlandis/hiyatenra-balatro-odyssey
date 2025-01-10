@@ -379,7 +379,7 @@ SMODS.Joker
         G.E_MANAGER:add_event(Event(
         {
           func = function() 
-            card_eval_status_text(card, 'extra', nil, nil, nil, {message = localize{type='variable', key='a_chips',vars={card.ability.extra.chips_mod}}})
+            card_eval_status_text(card, 'extra', nil, nil, nil, {message = 'Upgraded!', colour = G.C.CHIPS})
             return true
           end
         }))
@@ -388,11 +388,11 @@ SMODS.Joker
       card.ability.extra.saw_shop_entry = false
       card.ability.extra.purchased_anything = false
     elseif context.joker_main then
-      if card.ability.extra.mult > 0 then
+      if card.ability.extra.chips > 0 then
         return
         {
-          chips_mod = card.ability.extra.chips,
-          message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips } }
+          chip_mod = card.ability.extra.chips,
+          message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips } },
         }
       end
     end
@@ -529,7 +529,7 @@ SMODS.Joker
 
       return
       {
-        message = localize { type = 'variable', key = 'a_mult', vars = {card.ability.extra.mult_mod}},
+        message = 'Upgraded!',
         colour = G.C.MULT,
         card = card
       }
