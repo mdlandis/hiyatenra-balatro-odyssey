@@ -180,7 +180,7 @@ SMODS.Joker
   end,
 
   calculate = function(self, card, context)
-    if context.cardarea == G.jokers and context.before and G.GAME.current_round.hands_left == 1 then 
+    if context.cardarea == G.jokers and context.before and G.GAME.current_round.hands_left == 0 then 
       return 
       {
         card = self,
