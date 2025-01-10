@@ -1,0 +1,13 @@
+{
+    "id": "Odyssey",
+    "name": "Odyssey",
+    "author": ["hiyatenra"],
+    "description": "Implements the Orichalcum as playable jokers!",
+    "prefix": "odys",
+    "main_file": "Odyssey.lua",
+    "badge_colour": "c7638f",
+    "dependencies": [
+        "Steamodded (>=1.0.0~ALPHA-1225a)"
+    ],
+    "version": "1.0.0"
+}
