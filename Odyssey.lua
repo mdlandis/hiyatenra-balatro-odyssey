@@ -347,18 +347,18 @@ SMODS.Joker
     name = 'Asta',
     text = 
     {
-      'This Joker gains {C:chips}+#1#{} Chips',
+      'This Joker gains {C:mult}+#1#{} Mult',
       'when you enter and leave a',
       '{C:attention}shop{} without buying anything',
-      '{C:inactive}(Currently{} {C:chips}+#2#{}{C:inactive} Chips)' 
+      '{C:inactive}(Currently{} {C:mult}+#2#{}{C:inactive} Mult)' 
     }
   },
 
   loc_vars = function(self, info_queue, card)
-    return { vars = { card.ability.extra.chips_mod, card.ability.extra.chips } }
+    return { vars = { card.ability.extra.mult_mod, card.ability.extra.mult } }
   end,
 
-  config = { extra = { chips_mod = 15, chips = 0, saw_non_shop = false, saw_shop_entry = false, purchased_anything = false } },
+  config = { extra = { mult_mod = 4, mult = 0, saw_non_shop = false, saw_shop_entry = false, purchased_anything = false } },
 
   blueprint_compat = true,
   perishable_compat = true,
@@ -375,11 +375,11 @@ SMODS.Joker
       card.ability.extra.purchased_anything = true
     elseif not context.blueprint and context.ending_shop then
       if card.ability.extra.saw_shop_entry and not card.ability.extra.purchased_anything then
-        card.ability.extra.chips = card.ability.extra.chips + card.ability.extra.chips_mod
+        card.ability.extra.mult = card.ability.extra.mult + card.ability.extra.mult_mod
         G.E_MANAGER:add_event(Event(
         {
           func = function() 
-            card_eval_status_text(card, 'extra', nil, nil, nil, {message = 'Upgraded!', colour = G.C.CHIPS})
+            card_eval_status_text(card, 'extra', nil, nil, nil, {message = 'Upgraded!', colour = G.C.MULT})
             return true
           end
         }))
@@ -388,11 +388,11 @@ SMODS.Joker
       card.ability.extra.saw_shop_entry = false
       card.ability.extra.purchased_anything = false
     elseif context.joker_main then
-      if card.ability.extra.chips > 0 then
+      if card.ability.extra.mult > 0 then
         return
         {
-          chip_mod = card.ability.extra.chips,
-          message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips } },
+          mult_mod = card.ability.extra.mult,
+          message = localize { type = 'variable', key = 'a_mult', vars = { card.ability.extra.mult } },
         }
       end
     end
@@ -402,7 +402,7 @@ SMODS.Joker
   -- to see when we go from not being in a shop to being in a shop
   -- and essentially call that 'shop begin'
   update = function(self, card)
-    if G.playing_cards == nil then return end
+    if not G.jokers then return end
 
     local found = false
     for i=1, #G.jokers.cards do
@@ -484,18 +484,18 @@ SMODS.Joker
     name = 'Merica',
     text = 
     {
-      'This Joker gains {C:mult}+#2#{} Mult',
+      'This Joker gains {C:chips}+#2#{} Chips',
       'if {C:attention}poker hand{} is a {C:attention}#1#{},',
       'then poker hand changes',
-      "{C:inactive}(Currently {}{C:mult}+#3#{} {C:inactive}Mult)"
+      "{C:inactive}(Currently {}{C:chips}+#3#{} {C:inactive}Chips)"
     }
   },
 
   loc_vars = function(self, info_queue, card)
-    return { vars = { (localize(get_current_merica_hand(card), 'poker_hands')), card.ability.extra.mult_mod, card.ability.extra.mult } }
+    return { vars = { (localize(get_current_merica_hand(card), 'poker_hands')), card.ability.extra.chip_mod, card.ability.extra.chips } }
   end,
 
-  config = { extra = { merica_poker_hand = nil, mult_mod = 4, mult = 0 } },
+  config = { extra = { merica_poker_hand = nil, chip_mod = 12, chips = 0 } },
 
   blueprint_compat = true,
   perishable_compat = true,
@@ -509,7 +509,7 @@ SMODS.Joker
 
   calculate = function(self, card, context)
     if context.scoring_name == get_current_merica_hand(card) and not context.blueprint then
-      card.ability.extra.mult = card.ability.extra.mult + card.ability.extra.mult_mod
+      card.ability.extra.chips = card.ability.extra.chips + card.ability.extra.chip_mod
 
       local _poker_hands = {}
       for k, v in pairs(G.GAME.hands) do
@@ -530,15 +530,15 @@ SMODS.Joker
       return
       {
         message = 'Upgraded!',
-        colour = G.C.MULT,
+        colour = G.C.CHIPS,
         card = card
       }
-    elseif context.joker_main and card.ability.extra.mult > 0 then
+    elseif context.joker_main and card.ability.extra.chips > 0 then
       return 
       {
-        mult_mod = card.ability.extra.mult,
-        message = localize { type = 'variable', key = 'a_mult', vars = { card.ability.extra.mult }},
-        colour = G.C.MULT
+        chip_mod = card.ability.extra.chips,
+        message = localize { type = 'variable', key = 'a_chips', vars = { card.ability.extra.chips }},
+        colour = G.C.CHIPS
       }
     end
   end
