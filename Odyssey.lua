@@ -567,9 +567,9 @@ SMODS.Joker
     name = 'Opal',
     text = 
     {
-      'Whenever you discard',
-      'a {C:attention}5{}, create a {C:dark_edition}Negative{}',
-      '{C:purple}Tarot{} card',
+      'Create a {C:dark_edition}Negative{}',
+      '{C:purple}Tarot{} card for each',
+      'discarded {C:attention}5{}'
     }
   },
 
@@ -591,7 +591,7 @@ SMODS.Joker
 
   calculate = function(self, card, context)
     if context.discard then
-      if context.other_card:get_id() == 5 then
+      if context.other_card:get_id() == 5 and not context.other_card.debuff then
         local card = create_card('Tarot',G.consumeables, nil, nil, nil, nil, nil, 'opal')
         card:set_edition('e_negative', true)
         card:add_to_deck()
