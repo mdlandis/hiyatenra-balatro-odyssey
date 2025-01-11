@@ -105,12 +105,12 @@ SMODS.Joker
   blueprint_compat = true,
   perishable_compat = true,
   eternal_compat = true,
-  rarity = 3,
+  rarity = 2,
 
   atlas = 'Odyssey',
   pos = { x = 0, y = 0 },
 
-  cost = 7,
+  cost = 6,
 
   in_pool = function()
     local condition = false
@@ -582,7 +582,7 @@ SMODS.Joker
   blueprint_compat = true,
   perishable_compat = true,
   eternal_compat = true,
-  rarity = 2,
+  rarity = 3,
 
   atlas = 'Odyssey',
   pos = { x = 1, y = 1 },
