@@ -13,71 +13,156 @@ function Game:init_game_object()
 
   init_game_object_val.OdysseyVars = 
   {
-    melira_count = 0,
   }
   return init_game_object_val
 end
 
-SMODS.Joker:take_ownership('ticket', 
-{
-  -- modify golden ticket to score steel cards if melira is in play
-  calculate = function(self, card, context)
-    if context.individual and context.cardarea == G.play then
-      local has_melira = next(SMODS.find_card('j_odys_melira', false))
-      if context.other_card.ability.name == 'Gold Card' or (has_melira and context.other_card.ability.name == 'Steel Card') then
-        G.GAME.dollar_buffer = (G.GAME.dollar_buffer or 0) + card.ability.extra
-        G.E_MANAGER:add_event(Event({func = (function() G.GAME.dollar_buffer = 0; return true end)}))
-        return 
-        {
-            dollars = card.ability.extra,
-            card = card
-        }
+--take ownership of spectrals to properly return created cards
+local function random_destroy(used_tarot)
+  local destroyed_cards = {}
+  destroyed_cards[#destroyed_cards + 1] = pseudorandom_element(G.hand.cards, pseudoseed('random_destroy'))
+  G.E_MANAGER:add_event(Event({
+      trigger = 'after',
+      delay = 0.4,
+      func = function()
+          play_sound('tarot1')
+          used_tarot:juice_up(0.3, 0.5)
+          return true
       end
-    end
-  end
-})
-
--- modify steel joker to count gold cards if Melira is in play
-recalculate_steel_tally = function(card)
-  card.ability.steel_tally = 0
-  local gold_tally = 0
-  local steel_tally = 0
-  local has_melira = next(SMODS.find_card('j_odys_melira', false))
-
-  if not G.playing_cards then 
-    return
-  end
-
-  for k, v in pairs(G.playing_cards) do
-    if v.config.center == G.P_CENTERS.m_steel then 
-      card.ability.steel_tally = card.ability.steel_tally + 1
-    elseif has_melira and v.config.center == G.P_CENTERS.m_gold then
-      card.ability.steel_tally = card.ability.steel_tally + 1
-      gold_tally = gold_tally + 1
-    end
-  end
+  }))
+  G.E_MANAGER:add_event(Event({
+      trigger = 'after',
+      delay = 0.1,
+      func = function()
+          for i = #destroyed_cards, 1, -1 do
+              local card = destroyed_cards[i]
+              if card.ability.name == 'Glass Card' then
+                  card:shatter()
+              else
+                  card:start_dissolve(nil, i ~= #destroyed_cards)
+              end
+          end
+          return true
+      end
+  }))
+  return destroyed_cards
 end
 
-SMODS.Joker:take_ownership('steel_joker',
-{
-  loc_vars = function(self, info_queue, card)
-    recalculate_steel_tally(card)
-    return { vars = {card.ability.extra, 1 + card.ability.extra*(card.ability.steel_tally or 0)} }
-  end,
-
-  calculate = function(self, card, context)
-    if context.joker_main then
-      recalculate_steel_tally(card)
-      if card.ability.steel_tally > 0 then
-        return 
-        {
-            message = localize{type='variable',key='a_xmult',vars={1 + card.ability.extra * card.ability.steel_tally}},
-            Xmult_mod = 1 + card.ability.extra * card.ability.steel_tally, 
-            colour = G.C.MULT
-        }
+SMODS.Consumable:take_ownership('grim', {
+  use = function(self, card, area, copier)
+      local used_tarot = copier or card
+      local destroyed_cards = random_destroy(used_tarot)
+      G.E_MANAGER:add_event(Event({
+          trigger = 'after',
+          delay = 0.7,
+          func = function()
+              local cards = {}
+              for i = 1, card.ability.extra do
+                  -- TODO preserve suit vanilla RNG
+                  local _suit, _rank =
+                      pseudorandom_element(SMODS.Suits, pseudoseed('grim_create')).card_key, 'A'
+                  local cen_pool = {}
+                  for k, v in pairs(G.P_CENTER_POOLS["Enhanced"]) do
+                      if v.key ~= 'm_stone' and not v.overrides_base_rank then
+                          cen_pool[#cen_pool + 1] = v
+                      end
+                  end
+                  cards[i] = create_playing_card({
+                      front = G.P_CARDS[_suit .. '_' .. _rank],
+                      center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))
+                  }, G.hand, nil, i ~= 1, { G.C.SECONDARY_SET.Spectral })
+              end
+              playing_card_joker_effects(cards)
+              return true
+          end
+      }))
+      delay(0.3)
+      for i = 1, #G.jokers.cards do
+          G.jokers.cards[i]:calculate_joker({ remove_playing_cards = true, removed = destroyed_cards })
       end
-    end
-  end,  
+  end,
+})
+
+SMODS.Consumable:take_ownership('familiar', {
+  use = function(self, card, area, copier)
+      local used_tarot = copier or card
+      local destroyed_cards = random_destroy(used_tarot)
+      G.E_MANAGER:add_event(Event({
+          trigger = 'after',
+          delay = 0.7,
+          func = function()
+              local cards = {}
+              for i = 1, card.ability.extra do
+                  -- TODO preserve suit vanilla RNG
+                  local faces = {}
+                  for _, v in ipairs(SMODS.Rank.obj_buffer) do
+                      local r = SMODS.Ranks[v]
+                      if r.face then table.insert(faces, r) end
+                  end
+                  local _suit, _rank =
+                      pseudorandom_element(SMODS.Suits, pseudoseed('familiar_create')).card_key,
+                      pseudorandom_element(faces, pseudoseed('familiar_create')).card_key
+                  local cen_pool = {}
+                  for k, v in pairs(G.P_CENTER_POOLS["Enhanced"]) do
+                      if v.key ~= 'm_stone' and not v.overrides_base_rank then
+                          cen_pool[#cen_pool + 1] = v
+                      end
+                  end
+                  cards[i] = create_playing_card({
+                      front = G.P_CARDS[_suit .. '_' .. _rank],
+                      center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))
+                  }, G.hand, nil, i ~= 1, { G.C.SECONDARY_SET.Spectral })
+              end
+              playing_card_joker_effects(cards)
+              return true
+          end
+      }))
+      delay(0.3)
+      for i = 1, #G.jokers.cards do
+          G.jokers.cards[i]:calculate_joker({ remove_playing_cards = true, removed = destroyed_cards })
+      end
+  end,
+})
+
+SMODS.Consumable:take_ownership('incantation', {
+  use = function(self, card, area, copier)
+      local used_tarot = copier or card
+      local destroyed_cards = random_destroy(used_tarot)
+      G.E_MANAGER:add_event(Event({
+          trigger = 'after',
+          delay = 0.7,
+          func = function()
+              local cards = {}
+              for i = 1, card.ability.extra do
+                  -- TODO preserve suit vanilla RNG
+                  local numbers = {}
+                  for _, v in ipairs(SMODS.Rank.obj_buffer) do
+                      local r = SMODS.Ranks[v]
+                      if v ~= 'Ace' and not r.face then table.insert(numbers, r) end
+                  end
+                  local _suit, _rank =
+                      pseudorandom_element(SMODS.Suits, pseudoseed('incantation_create')).card_key,
+                      pseudorandom_element(numbers, pseudoseed('incantation_create')).card_key
+                  local cen_pool = {}
+                  for k, v in pairs(G.P_CENTER_POOLS["Enhanced"]) do
+                      if v.key ~= 'm_stone' and not v.overrides_base_rank then
+                          cen_pool[#cen_pool + 1] = v
+                      end
+                  end
+                  cards[i] = create_playing_card({
+                      front = G.P_CARDS[_suit .. '_' .. _rank],
+                      center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))
+                  }, G.hand, nil, i ~= 1, { G.C.SECONDARY_SET.Spectral })
+              end
+              playing_card_joker_effects(cards)
+              return true
+          end
+      }))
+      delay(0.3)
+      for i = 1, #G.jokers.cards do
+          G.jokers.cards[i]:calculate_joker({ remove_playing_cards = true, removed = destroyed_cards })
+      end
+  end,
 })
 
 SMODS.Joker 
@@ -190,40 +275,6 @@ SMODS.Joker
     end
   end
 }
-  
-function recalculate_melira_effect(add)
-  local operator = 1
-  if not add then
-    operator = -1
-  end
- 
-  local old_melira_count = G.GAME.OdysseyVars.melira_count
-  G.GAME.OdysseyVars.melira_count = G.GAME.OdysseyVars.melira_count + operator
-
-  if old_melira_count <= 0 and G.GAME.OdysseyVars.melira_count > 0 then
-    change_melira_effect(true)
-  elseif old_melira_count > 0 and G.GAME.OdysseyVars.melira_count <= 0 then
-    change_melira_effect(false)
-  end
-end
-
-function change_melira_effect(add)
-  local operator = 1
-  if not add then
-    operator = -1
-  end
-
-  for _, deck_card in pairs(G.playing_cards) do
-    if deck_card.config.center == G.P_CENTERS.m_steel then
-        deck_card.ability.h_dollars = (deck_card.ability.h_dollars or 0) + G.P_CENTERS.m_gold.config.h_dollars * operator
-    end
-    if deck_card.config.center == G.P_CENTERS.m_gold then
-      deck_card.ability.h_x_mult = (deck_card.ability.h_x_mult or 0) + G.P_CENTERS.m_steel.config.h_x_mult * operator
-    end
-  end
-  G.P_CENTERS.m_steel.config.h_dollars = (G.P_CENTERS.m_steel.config.h_dollars or 0) + G.P_CENTERS.m_gold.config.h_dollars * operator
-  G.P_CENTERS.m_gold.config.h_x_mult = (G.P_CENTERS.m_gold.config.h_x_mult or 0) + G.P_CENTERS.m_steel.config.h_x_mult * operator
-end
 
 SMODS.Joker
 {
@@ -265,15 +316,16 @@ SMODS.Joker
     return condition
   end,
 
-  -- rather than add_to_deck directly doing the melira add effect,
-  -- we instead increment a count of total meliras owned and then decide
-  -- whether the effect should be active
-  add_to_deck = function(self, card)
-    recalculate_melira_effect(true)
-  end,
-
-  remove_from_deck = function(self, card)
-    recalculate_melira_effect(false)
+  calculate = function(self, card, context)
+    if context.check_enhancement and not context.blueprint then
+      if context.other_card.config.center == G.P_CENTERS.m_gold or context.other_card.config.center == G.P_CENTERS.m_steel then
+        return 
+        {
+          m_steel = true,
+          m_gold = true
+        }
+      end
+    end
   end,
 }
 
@@ -455,20 +507,23 @@ SMODS.Joker
 
   calculate = function(self, card, context)
     if context.playing_card_added then
-      if context.cards and context.cards[1] then
-        if not context.cards[1].added_by_acacius then
-          for i = 1, card.ability.extra.extra_copies, 1 do
-            G.playing_card = (G.playing_card and G.playing_card + 1) or 1
-            local new_card = copy_card(context.cards[1], nil, nil, G.playing_card)
-            new_card:add_to_deck()
-            G.deck.config.card_limit = G.deck.config.card_limit + 1
-            table.insert(G.playing_cards, new_card)
-            new_card.states.visible = nil
-            -- we set added_by_acacius to prevent infinite loops of card adding
-            new_card.added_by_acacius = true
-            local eval_card = card
-            if context.blueprint then eval_card = context.blueprint_card end
-            card_eval_status_text(eval_card, 'extra', nil, nil, nil, {message = localize('k_copied_ex'), colour = G.C.CHIPS, card = eval_card, playing_cards_created = {new_card}})
+      --sendDebugMessage('cards: ' .. inspect(context.cards), MyDebugLogger)
+      if context.cards then
+        for _, card_to_copy in ipairs(context.cards) do
+          if not card_to_copy.added_by_acacius then
+            for i = 1, card.ability.extra.extra_copies, 1 do
+              G.playing_card = (G.playing_card and G.playing_card + 1) or 1
+              local new_card = copy_card(card_to_copy, nil, nil, G.playing_card)
+              new_card:add_to_deck()
+              G.deck.config.card_limit = G.deck.config.card_limit + 1
+              table.insert(G.playing_cards, new_card)
+              new_card.states.visible = nil
+              -- we set added_by_acacius to prevent infinite loops of card adding
+              new_card.added_by_acacius = true
+              local eval_card = card
+              if context.blueprint then eval_card = context.blueprint_card end
+              card_eval_status_text(eval_card, 'extra', nil, nil, nil, {message = localize('k_copied_ex'), colour = G.C.CHIPS, card = eval_card, playing_cards_created = {new_card}})
+            end
           end
         end
       end

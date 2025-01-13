@@ -1,0 +1,154 @@
+[manifest]
+version = "1.0.0"
+priority = 0
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''playing_cards_created = {true}'''
+position = "at"
+payload = '''
+playing_cards_created = {_card}
+'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        local _card = create_playing_card({
+            front = pseudorandom_element(G.P_CARDS, pseudoseed('cert_fr')), 
+            center = G.P_CENTERS.c_base}, G.hand, nil, nil, {G.C.SECONDARY_SET.Enhanced})
+        local seal_type = pseudorandom(pseudoseed('certsl'))
+        if seal_type > 0.75 then _card:set_seal('Red', true)
+        elseif seal_type > 0.5 then _card:set_seal('Blue', true)
+        elseif seal_type > 0.25 then _card:set_seal('Gold', true)
+        else _card:set_seal('Purple', true)
+        end
+        G.GAME.blind:debuff_card(_card)
+        G.hand:sort()
+        if context.blueprint_card then context.blueprint_card:juice_up() else self:juice_up() end
+        return true
+    end}))
+
+playing_card_joker_effects({true})
+'''
+position = "at"
+payload = '''
+
+local _card = create_playing_card({
+            front = pseudorandom_element(G.P_CARDS, pseudoseed('cert_fr')), 
+            center = G.P_CENTERS.c_base}, G.hand, nil, nil, {G.C.SECONDARY_SET.Enhanced})
+    local seal_type = pseudorandom(pseudoseed('certsl'))
+    if seal_type > 0.75 then 
+        _card:set_seal('Red', true)
+    elseif seal_type > 0.5 then 
+        _card:set_seal('Blue', true)
+    elseif seal_type > 0.25 then 
+        _card:set_seal('Gold', true)
+    else 
+        _card:set_seal('Purple', true)
+    end
+
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        G.GAME.blind:debuff_card(_card)
+        G.hand:sort()
+        if context.blueprint_card then context.blueprint_card:juice_up() else self:juice_up() end
+        return true
+    end}))
+
+playing_card_joker_effects({_card})
+'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        local front = pseudorandom_element(G.P_CARDS, pseudoseed('marb_fr'))
+        G.playing_card = (G.playing_card and G.playing_card + 1) or 1
+        local card = Card(G.play.T.x + G.play.T.w/2, G.play.T.y, G.CARD_W, G.CARD_H, front, G.P_CENTERS.m_stone, {playing_card = G.playing_card})
+        card:start_materialize({G.C.SECONDARY_SET.Enhanced})
+        G.play:emplace(card)
+        table.insert(G.playing_cards, card)
+        return true
+    end}))
+card_eval_status_text(context.blueprint_card or self, 'extra', nil, nil, nil, {message = localize('k_plus_stone'), colour = G.C.SECONDARY_SET.Enhanced})
+
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        G.deck.config.card_limit = G.deck.config.card_limit + 1
+        return true
+    end}))
+    draw_card(G.play,G.deck, 90,'up', nil)  
+
+playing_card_joker_effects({true})
+'''
+position = "at"
+payload = '''
+local front = pseudorandom_element(G.P_CARDS, pseudoseed('marb_fr'))
+G.playing_card = (G.playing_card and G.playing_card + 1) or 1
+local card = Card(G.play.T.x + G.play.T.w/2, G.play.T.y, G.CARD_W, G.CARD_H, front, G.P_CENTERS.m_stone, {playing_card = G.playing_card})
+
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        card:start_materialize({G.C.SECONDARY_SET.Enhanced})
+        G.play:emplace(card)
+        table.insert(G.playing_cards, card)
+        return true
+    end}))
+card_eval_status_text(context.blueprint_card or self, 'extra', nil, nil, nil, {message = localize('k_plus_stone'), colour = G.C.SECONDARY_SET.Enhanced})
+
+G.E_MANAGER:add_event(Event({
+    func = function() 
+        G.deck.config.card_limit = G.deck.config.card_limit + 1
+        return true
+    end}))
+    draw_card(G.play,G.deck, 90,'up', nil)  
+
+playing_card_joker_effects({card})
+'''
+match_indent = true
+times = 1
+
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''
+local cards = {}
+for i=1, self.ability.extra do
+    cards[i] = true
+    local _suit, _rank = nil, nil
+    if self.ability.name == 'Familiar' then
+        _rank = pseudorandom_element({'J', 'Q', 'K'}, pseudoseed('familiar_create'))
+        _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('familiar_create'))
+    elseif self.ability.name == 'Grim' then
+        _rank = 'A'
+        _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('grim_create'))
+    elseif self.ability.name == 'Incantation' then
+        _rank = pseudorandom_element({'2', '3', '4', '5', '6', '7', '8', '9', 'T'}, pseudoseed('incantation_create'))
+        _suit = pseudorandom_element({'S','H','D','C'}, pseudoseed('incantation_create'))
+    end
+    _suit = _suit or 'S'; _rank = _rank or 'A'
+    local cen_pool = {}
+    for k, v in pairs(G.P_CENTER_POOLS["Enhanced"]) do
+        if v.key ~= 'm_stone' then 
+            cen_pool[#cen_pool+1] = v
+        end
+    end
+    create_playing_card({front = G.P_CARDS[_suit..'_'.._rank], center = pseudorandom_element(cen_pool, pseudoseed('spe_card'))}, G.hand, nil, i ~= 1, {G.C.SECONDARY_SET.Spectral})
+end
+playing_card_joker_effects(cards)
+'''
+position = "at"
+payload = '''
+'''
+match_indent = true
+times = 1
