@@ -654,7 +654,7 @@ SMODS.Joker
         return 
         {
           message = localize('k_plus_tarot'),
-          card = self
+          card = card
         }
       end
     end
