@@ -517,6 +517,7 @@ SMODS.Joker
               new_card:add_to_deck()
               G.deck.config.card_limit = G.deck.config.card_limit + 1
               table.insert(G.playing_cards, new_card)
+              G.deck:emplace(new_card)
               new_card.states.visible = nil
               -- we set added_by_acacius to prevent infinite loops of card adding
               new_card.added_by_acacius = true
